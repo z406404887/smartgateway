@@ -1,0 +1,29 @@
+// 开头必须申明protobuf的语法版本，此处申明采用proto3版本的语法
+syntax = "proto3";
+
+// 申明所属包
+package test;
+
+import "google/api/annotations.proto";
+
+// 定义请求参数结构
+message Request {
+    string username = 1; 
+}
+
+// 定义响应参数结构
+message Response {
+    string returnmsg = 1; 
+}
+
+
+// 定义服务
+service BasicService {
+    rpc Say (Request) returns (Response) {
+        // http option
+        option (google.api.http) = {
+            post: "/say"
+            body: "*"
+        };
+    } 
+}

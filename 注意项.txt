@@ -1,0 +1,13 @@
+﻿//test.proto 中需要导入annotations.proto文件， 需 编译google/api中的annotations.proto文件(
+	需准备以下文件夹下的文件
+	import "google/api/http.proto";
+	import "google/protobuf/descriptor.proto";
+)
+protoc -I . --go_out=plugins=grpc,Mgoogle/protobuf/descriptor.proto=github.com/golang/protobuf/protoc-gen-go/descriptor:. google/api/annotations.proto
+ 
+//开始编译 proto 生成 .pb.go文件
+protoc -I . --go_out=plugins=grpc:. ./test/test.proto
+
+//开始编译proto 生成gateway的 .gw.go文件
+protoc --grpc-gateway_out=logtostderr=true:. ./test/test.proto
+ 
