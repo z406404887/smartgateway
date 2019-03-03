@@ -12,20 +12,24 @@ import (
 var (
 	grpcIP   = "127.0.0.1"
 	grpcPort = 9001
+	opts     []grpc.ServerOption
 )
 
 //Run 网关入口
 func Run() {
-	//编码
-	rcServerOption := grpc.CustomCodec(NewRawCodec())
+	//自定义编码
+	opts := append(opts, grpc.CustomCodec(NewRawCodec()))
 
 	//Handle
 	handle := &UnknowServerHandler{}
-
 	dcServerOption := grpc.UnknownServiceHandler(handle.Handler)
+	opts = append(opts, dcServerOption)
+
+	//拦截器
+	opts = append(opts, grpc.UnaryInterceptor(Interceptor))
 
 	//初始化grpc
-	s := grpc.NewServer(rcServerOption, dcServerOption)
+	s := grpc.NewServer(opts...)
 
 	//注册grpc服务
 	reflection.Register(s)

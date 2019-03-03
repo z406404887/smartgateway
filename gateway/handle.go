@@ -18,7 +18,7 @@ var (
 type UnknowServerHandler struct {
 }
 
-// 该handler以gRPC server的模式来接受数据流，并将受到的数据转发到指定的connection中
+//Handler 该handler以gRPC server的模式来接受数据流，并将受到的数据转发到指定的connection中
 func (s *UnknowServerHandler) Handler(srv interface{}, serverStream grpc.ServerStream) error {
 	// 获取请求流的目的接口名称
 	fullMethodName, ok := grpc.MethodFromServerStream(serverStream)
@@ -27,9 +27,9 @@ func (s *UnknowServerHandler) Handler(srv interface{}, serverStream grpc.ServerS
 	}
 
 	outgoingCtx := serverStream.Context()
-	endpoint := "127.0.0.1:" //从consul 或配置
+	endpoint := "127.0.0.1:8001" //根据fullMethodName 从consul获取
 
-	// 该director即为上述的StreamDirector，获取到对应的目的方connection
+	// 中转 目的服务方
 	backendConn, err := grpc.DialContext(outgoingCtx, endpoint, grpc.WithCodec(NewRawCodec()), grpc.WithInsecure())
 	if err != nil {
 		return err
@@ -77,8 +77,8 @@ func (s *UnknowServerHandler) Handler(srv interface{}, serverStream grpc.ServerS
 func (s *UnknowServerHandler) forwardClientToServer(src grpc.ClientStream, dst grpc.ServerStream) chan error {
 	ret := make(chan error, 1)
 	go func() {
-		// 设置*frame结构作为RecvMsg的参数，
-		// *frame即为我们自定义codec中使用到的数据结构
+		// 设置*bridge结构作为RecvMsg的参数，
+		// *bridge即为我们自定义codec中使用到的数据结构
 		f := &bridge{}
 		for i := 0; ; i++ {
 			if err := src.RecvMsg(f); err != nil {

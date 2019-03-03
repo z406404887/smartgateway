@@ -16,14 +16,12 @@ var (
 	consulIPPort = "192.168.1.105:8500"
 	grpcIP       = "127.0.0.1"
 	grpcPort     = 8001
-	opts         []grpc.ServerOption //拦截器
 )
 
 func main() {
 
 	//初始化grpc
-	opts = append(opts, grpc.UnaryInterceptor(grpcserver.Interceptor))
-	s := grpc.NewServer(opts...)
+	s := grpc.NewServer()
 
 	//要提供给客户端的test 服务
 	testserver := grpcserver.NewTestServer(grpcIP, grpcPort)
