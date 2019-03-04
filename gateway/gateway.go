@@ -17,6 +17,7 @@ var (
 
 //Run 网关入口
 func Run() {
+
 	//自定义编码
 	opts := append(opts, grpc.CustomCodec(NewRawCodec()))
 
@@ -26,7 +27,7 @@ func Run() {
 	opts = append(opts, dcServerOption)
 
 	//拦截器
-	opts = append(opts, grpc.UnaryInterceptor(Interceptor))
+	opts = append(opts, grpc.StreamInterceptor(Interceptor()))
 
 	//初始化grpc
 	s := grpc.NewServer(opts...)

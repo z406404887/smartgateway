@@ -11,21 +11,26 @@ import (
 )
 
 // Interceptor 拦截器
-func Interceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-	//身份验证
-	err := auth(ctx)
-	if err != nil {
-		return nil, err
-	}
+func Interceptor() grpc.StreamServerInterceptor {
 
-	//流量验证
-	err = rateVerify(info.FullMethod)
-	if err != nil {
-		return nil, err
-	}
+	return func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		ctx := ss.Context()
 
-	// 继续处理请求
-	return handler(ctx, req)
+		//身份验证
+		err := auth(ctx)
+		if err != nil {
+			return err
+		}
+
+		//流量验证
+		err = rateVerify(info.FullMethod)
+		if err != nil {
+			return err
+		}
+
+		// 继续处理请求
+		return handler(srv, ss)
+	}
 }
 
 //token验证
@@ -35,16 +40,22 @@ func auth(ctx context.Context) error {
 		return grpc.Errorf(codes.Unauthenticated, "验证失败")
 	}
 
-	authInfo, ok := md["auth"]
+	name, ok := md["name"]
 
-	if !ok || len(authInfo) < 2 {
+	if !ok {
 		return grpc.Errorf(codes.Unauthenticated, "验证失败")
 	}
 
-	name := authInfo[0]
-	token := authInfo[1]
+	token, ok := md["token"]
+
+	if !ok {
+		return grpc.Errorf(codes.Unauthenticated, "验证失败")
+	}
 
 	//开始验证
+	if name[0] != "123" || token[0] != "456" {
+		return grpc.Errorf(codes.Unauthenticated, "验证失败")
+	}
 
 	return nil
 }
