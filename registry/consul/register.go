@@ -107,4 +107,5 @@ func RegisterService(consulIp string, id string, name string, ipAddress string, 
 	if err != nil {
 		panic(err)
 	}
+
 }

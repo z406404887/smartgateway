@@ -3,6 +3,7 @@ package gateway
 import (
 	"context"
 	"io"
+	"lincoln/smartgateway/Balancer"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -27,10 +28,26 @@ func (s *UnknowServerHandler) Handler(srv interface{}, serverStream grpc.ServerS
 	}
 
 	outgoingCtx := serverStream.Context()
-	endpoint := "127.0.0.1:8001" //根据fullMethodName 从consul获取
+	//serverName := "test_name" //根据fullMethodName 从consul获取 serverName
+
+	//初始化负载均衡管理
+	balancer := balancer.NewRoundRobin()
+	balancer.InitEndPoints()
+
+	target := balancer.GetAddress(fullMethodName)
 
 	// 中转 目的服务方
-	backendConn, err := grpc.DialContext(outgoingCtx, endpoint, grpc.WithCodec(NewRawCodec()), grpc.WithInsecure())
+	backendConn, err := grpc.DialContext(
+		outgoingCtx,
+		target,
+		grpc.WithCodec(NewRawCodec()),
+		grpc.WithInsecure(),
+		//下面这种负载均衡每次都会new 一个新的连接， 新的计算负载对象， 所以会无效， 需自己实现
+		// grpc.WithBalancer(grpc.RoundRobin(NewConsulResolver(
+		// 	"192.168.1.105:8500", serverName,
+		// ))),
+		// grpc.WithBlock(),
+	)
 	if err != nil {
 		return err
 	}
@@ -54,6 +71,7 @@ func (s *UnknowServerHandler) Handler(srv interface{}, serverStream grpc.ServerS
 		select {
 		case s2cErr := <-s2cErrChan:
 			if s2cErr == io.EOF {
+
 				// 正常结束
 				clientStream.CloseSend()
 				break
@@ -71,6 +89,7 @@ func (s *UnknowServerHandler) Handler(srv interface{}, serverStream grpc.ServerS
 			return nil
 		}
 	}
+
 	return grpc.Errorf(codes.Internal, "gRPC proxying should never reach this stage.")
 }
 
@@ -102,6 +121,7 @@ func (s *UnknowServerHandler) forwardClientToServer(src grpc.ClientStream, dst g
 				ret <- err
 				break
 			}
+
 		}
 	}()
 	return ret
