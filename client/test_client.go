@@ -80,17 +80,17 @@ func main() {
 
 	ctx := metadata.NewOutgoingContext(context.Background(), md)
 
-	for i := 0; i < 200; i++ {
-		go func() {
-			fmt.Println("开始调用")
-			resp, err := client.Say(ctx, &test.Request{Username: "123"})
-			if err != nil {
-				log.Fatalf("Say err:%v\n", err)
-			}
+	//for i := 0; i < 200; i++ {
+	go func() {
+		fmt.Println("开始调用")
+		resp, err := client.Say(ctx, &test.Request{Username: "123"})
+		if err != nil {
+			log.Fatalf("Say err:%v\n", err)
+		}
 
-			fmt.Printf("Say response:%v\n", resp)
-		}()
-	}
+		fmt.Printf("Say response:%v\n", resp)
+	}()
+	//}
 
 	time.Sleep(20 * time.Second)
 }

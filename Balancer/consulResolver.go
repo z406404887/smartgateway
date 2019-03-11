@@ -1,21 +1,52 @@
 package balancer
 
+import (
+	"fmt"
+
+	consulapi "github.com/hashicorp/consul/api"
+)
+
 type consulResolver struct {
-	notify chan serviceNotify
+	allService map[string]*consulapi.AgentService
+	client     *consulapi.Client
+	notify     chan serviceNotify
 }
 
-func NewConsulResolver() {
-	//rs := consulResolver
-}
+//NewConsulResolver 返回consulResolver
+func NewConsulResolver(consulAddr string) (resolver, error) {
 
-func (cr *consulResolver) Build() {
-	//初始化consul
+	//consul 配置
+	config := consulapi.DefaultConfig()
+	config.Address = consulAddr
+	client, err := consulapi.NewClient(config)
 
+	if err != nil {
+		return nil, err
+	}
+
+	cr := &consulResolver{
+		client: client,
+		notify: make(chan serviceNotify),
+	}
+
+	//获取所有地址
+	cr.allService, err = cr.client.Agent().Services()
+	if err != nil {
+		return nil, err
+	}
+
+	return cr, nil
 }
 
 func (cr *consulResolver) GetEndPoint(service string) (addrs []string) {
-	//根据服务名称获取到服务地址
-	addrs = []string{"127.0.0.0:8100"}
+	//遍历获取
+	for _, agentService := range cr.allService {
+		if agentService.Service == service {
+
+			addr := fmt.Sprintf("%s:%d", agentService.Address, agentService.Port)
+			addrs = append(addrs, addr)
+		}
+	}
 
 	return addrs
 }

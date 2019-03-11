@@ -9,6 +9,24 @@ type RoundRobin struct {
 	EndPoints map[string]endPoints
 }
 
+//NewRoundRobin 返回 接口对象
+func NewRoundRobin(consulIP string) Base {
+
+	//初始化consul 对象管理
+	consulResolver, err := NewConsulResolver(consulIP)
+	if err != nil {
+		return &RoundRobin{}
+	}
+
+	//初始化轮询对象
+	round := &RoundRobin{
+		EndPoints: make(map[string]endPoints),
+	}
+	round.NewResolver(consulResolver)
+
+	return round
+}
+
 //NewResolver 初始化 resolver
 func (r *RoundRobin) NewResolver(rs resolver) {
 	r.Resolver = rs

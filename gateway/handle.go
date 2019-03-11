@@ -14,6 +14,8 @@ var (
 		ServerStreams: true,
 		ClientStreams: true,
 	}
+
+	roundBalancer = balancer.NewRoundRobin("192.168.1.105:8500")
 )
 
 type UnknowServerHandler struct {
@@ -28,13 +30,8 @@ func (s *UnknowServerHandler) Handler(srv interface{}, serverStream grpc.ServerS
 	}
 
 	outgoingCtx := serverStream.Context()
-	//serverName := "test_name" //根据fullMethodName 从consul获取 serverName
-
-	//初始化负载均衡管理
-	balancer := balancer.NewRoundRobin()
-	balancer.InitEndPoints()
-
-	target := balancer.GetAddress(fullMethodName)
+	serverName := "test_name"                               //根据fullMethodName 从consul获取 serverName
+	target := roundBalancer.GetAddrByAlgorithms(serverName) //获取负载后的服务地址
 
 	// 中转 目的服务方
 	backendConn, err := grpc.DialContext(
@@ -46,7 +43,7 @@ func (s *UnknowServerHandler) Handler(srv interface{}, serverStream grpc.ServerS
 		// grpc.WithBalancer(grpc.RoundRobin(NewConsulResolver(
 		// 	"192.168.1.105:8500", serverName,
 		// ))),
-		// grpc.WithBlock(),
+		grpc.WithBlock(),
 	)
 	if err != nil {
 		return err
