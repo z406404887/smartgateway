@@ -4,30 +4,18 @@ type consulResolver struct {
 	notify chan serviceNotify
 }
 
-func (cr *consulResolver) Init() {
+func NewConsulResolver() {
+	//rs := consulResolver
+}
+
+func (cr *consulResolver) Build() {
 	//初始化consul
 
-	//初始化 notify
 }
 
 func (cr *consulResolver) GetEndPoint(service string) (addrs []string) {
 	//根据服务名称获取到服务地址
 	addrs = []string{"127.0.0.0:8100"}
-
-	//开始监控
-	go func() {
-		for {
-			newAddrs := cr.Watches(service)
-
-			//有更改， 通知
-			if newAddrs != nil {
-				cr.notify <- serviceNotify{
-					serviceName: service,
-					addresses:   newAddrs,
-				}
-			}
-		}
-	}()
 
 	return addrs
 }
