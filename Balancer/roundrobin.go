@@ -6,7 +6,7 @@ import "sync"
 type RoundRobin struct {
 	mu        sync.Mutex
 	Resolver  resolver
-	EndPoints map[string]endPoints
+	EndPoints map[string]*endPoints
 }
 
 //NewRoundRobin 返回 接口对象
@@ -20,7 +20,7 @@ func NewRoundRobin(consulIP string) Base {
 
 	//初始化轮询对象
 	round := &RoundRobin{
-		EndPoints: make(map[string]endPoints),
+		EndPoints: make(map[string]*endPoints),
 	}
 	round.NewResolver(consulResolver)
 
@@ -43,7 +43,7 @@ func (r *RoundRobin) GetAddrByAlgorithms(serviceName string) (addr string) {
 		arrayAddress := r.Resolver.GetEndPoint(serviceName)
 
 		//添加到RoundRobin中
-		ep = endPoints{
+		ep = &endPoints{
 			addresses: arrayAddress,
 			next:      0,
 		}
@@ -74,7 +74,7 @@ func (r *RoundRobin) WatchAndUp(service string) {
 			select {
 			case changeNotify := <-r.Resolver.Notify(): //Resolver有服务更改通知过来
 				if _, ok := r.EndPoints[changeNotify.serviceName]; ok {
-					r.EndPoints[changeNotify.serviceName] = endPoints{
+					r.EndPoints[changeNotify.serviceName] = &endPoints{
 						addresses: changeNotify.addresses,
 						next:      0,
 					}

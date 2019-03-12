@@ -43,7 +43,7 @@ func (s *UnknowServerHandler) Handler(srv interface{}, serverStream grpc.ServerS
 		// grpc.WithBalancer(grpc.RoundRobin(NewConsulResolver(
 		// 	"192.168.1.105:8500", serverName,
 		// ))),
-		grpc.WithBlock(),
+		//grpc.WithBlock(),
 	)
 	if err != nil {
 		return err
@@ -55,7 +55,7 @@ func (s *UnknowServerHandler) Handler(srv interface{}, serverStream grpc.ServerS
 
 	clientStream, err := grpc.NewClientStream(clientCtx, clientStreamDescForProxying, backendConn, fullMethodName)
 	if err != nil {
-		return err
+		return grpc.Errorf(codes.Internal, "gRPC error(1.0)")
 	}
 
 	// 启动流控，目的方->请求方

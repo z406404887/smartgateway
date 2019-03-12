@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"lincoln/smartgateway/ratelimit"
 	"fmt"
 	"lincoln/gohelper"
 	"time"
@@ -92,12 +93,12 @@ func auth(ctx context.Context) error {
 
 //请求的接口流量验证
 func rateVerify(FullMethod string) error {
-	// bucket := ratelimit.NewTokenBucket(FullMethod, nil)
-	// ok := bucket.Take(100000)
+	bucket := ratelimit.NewTokenBucket(FullMethod, nil)
+	ok := bucket.Take(100000)
 
-	// if !ok {
-	// 	return grpc.Errorf(codes.ResourceExhausted, "已达到最大请求数")
-	// }
+	if !ok {
+		return grpc.Errorf(codes.ResourceExhausted, "已达到最大请求数")
+	}
 	fmt.Println("请求通过")
 	return nil
 }
