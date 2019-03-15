@@ -55,7 +55,7 @@ func (s *UnknowServerHandler) Handler(srv interface{}, serverStream grpc.ServerS
 
 	clientStream, err := grpc.NewClientStream(clientCtx, clientStreamDescForProxying, backendConn, fullMethodName)
 	if err != nil {
-		return grpc.Errorf(codes.Internal, "gRPC error(1.0)")
+		return grpc.Errorf(codes.Internal, "gRPC error(1.0):"+err.Error())
 	}
 
 	// 启动流控，目的方->请求方

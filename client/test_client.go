@@ -57,7 +57,7 @@ var (
 func main() {
 
 	//初始化grpc
-	conn, err := grpc.Dial("127.0.0.1:9001", grpc.WithInsecure())
+	conn, err := grpc.Dial("192.168.1.102:9001", grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("fail to connect service, err :%v\n", err)
 		return
@@ -80,16 +80,16 @@ func main() {
 
 	ctx := metadata.NewOutgoingContext(context.Background(), md)
 
-	for i := 0; i < 200; i++ {
+	//for i := 0; i < 200; i++ {
 
-		fmt.Println("开始调用")
-		resp, err := client.Say(ctx, &test.Request{Username: "123"})
-		if err != nil {
-			log.Println("Say err:%v\n", err)
-		}
-
-		fmt.Printf("Say response:%v\n", resp)
-
+	fmt.Println("开始调用")
+	resp, err := client.Say(ctx, &test.Request{Username: "123"})
+	if err != nil {
+		log.Println("Say err:%v\n", err)
 	}
+
+	fmt.Printf("Say response:%v\n", resp)
+
+	//}
 
 }

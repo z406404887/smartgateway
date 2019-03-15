@@ -4,6 +4,14 @@ import (
 	"fmt"
 
 	consulapi "github.com/hashicorp/consul/api"
+	"github.com/hashicorp/consul/watch"
+)
+
+var (
+	err    error
+	params map[string]interface{}
+	plan   *watch.Plan
+	ch     chan int
 )
 
 type consulResolver struct {
@@ -52,13 +60,36 @@ func (cr *consulResolver) GetEndPoint(service string) (addrs []string) {
 }
 
 func (cr *consulResolver) Watches(service string) (addrs []string) {
-	// services, metainfo, err := w.client.Health().Service(w.service, "", true, &api.QueryOptions{
-	// 	WaitIndex: w.lastIndex, // 同步点，这个调用将一直阻塞，直到有新的更新
-	// })
+
+	//暂时不针对某个service 监控， 直接对 allService 定时更新
+	// ch = make(chan int, 1)
+
+	// params = make(map[string]interface{})
+	// params["type"] = "services"
+	// params["passingonly"] = false
+	// plan, err = watch.Parse(params)
 	// if err != nil {
-	// 	log.Fatal("error retrieving instances from Consul: %v", err)
+	// 	panic(err)
 	// }
-	// w.lastIndex = metainfo.LastIndex
+	// plan.Handler = func(index uint64, result interface{}) {
+	// 	if entries, ok := result.([]*consulapi.ServiceEntry); ok {
+	// 		fmt.Printf("serviceEntries:%v", entries)
+	// 		// your code
+	// 		ch <- 1
+	// 	}
+	// }
+	// go func() {
+	// 	// your consul agent addr
+	// 	if err = plan.Run("192.168.1.105:8500"); err != nil {
+	// 		panic(err)
+	// 	}
+	// }()
+	// go http.ListenAndServe(":8080", nil)
+
+	// for {
+	// 	<-ch
+	// 	fmt.Printf("get change")
+	// }
 	return nil
 }
 

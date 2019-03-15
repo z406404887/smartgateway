@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	grpcIP   = "127.0.0.1"
+	grpcIP   = "192.168.1.102"
 	grpcPort = 9001
 	opts     []grpc.ServerOption
 )
@@ -38,7 +38,7 @@ func Run() {
 	//开grpc端口监听
 	listen, err := net.Listen("tcp", grpcIP+":"+strconv.Itoa(grpcPort))
 	if err != nil {
-		log.Fatalf("listen localhost:8001 fail, err :%v\n", err)
+		log.Fatalf("listen localhost:9001 fail, err :%v\n", err)
 		return
 	}
 

@@ -8,12 +8,14 @@ import (
 	"strconv"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 )
 
 var (
 	consulIPPort = "192.168.1.105:8500"
-	grpcIP       = "127.0.0.1"
+	grpcIP       = "192.168.1.102"
 	grpcPort     = 8001
 )
 
@@ -23,6 +25,11 @@ func main() {
 
 	//初始化grpc
 	s := grpc.NewServer()
+
+	//health 健康检查
+	hsrv := health.NewServer()
+	hsrv.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
+	healthpb.RegisterHealthServer(s, hsrv)
 
 	//要提供给客户端的test 服务
 	testserver := grpcserver.NewTestServer(grpcIP, grpcPort)
