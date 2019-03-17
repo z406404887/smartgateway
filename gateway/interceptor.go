@@ -1,9 +1,9 @@
 package gateway
 
 import (
-	"lincoln/smartgateway/ratelimit"
 	"fmt"
 	"lincoln/gohelper"
+	"lincoln/smartgateway/ratelimit"
 	"time"
 
 	"golang.org/x/net/context"
@@ -25,6 +25,8 @@ func Interceptor() grpc.StreamServerInterceptor {
 		if err != nil {
 			return err
 		}
+
+		//断路器检查
 
 		//流量验证
 		err = rateVerify(info.FullMethod)
