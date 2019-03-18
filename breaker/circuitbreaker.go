@@ -9,7 +9,7 @@ import (
 
 type doFunc func(context.Context) error
 
-type failFunc func(context.Context) error
+type failFunc func(context.Context, error) error
 
 //状态
 const (
@@ -61,20 +61,22 @@ func (breaker *CircuitBreaker) SetConfig(triggerOpen func(Counts) bool, maxReque
 	breaker.BeHalOpenInterval = beHalOpenInterval
 
 	breaker.ClearInterval = clearInterval
+
+	breaker.viewTime = time.Now()
 }
 
 //Handle 执行请求， 记录相关行为
-func (breaker *CircuitBreaker) Handle(context context.Context, doFunc, failback failFunc) error {
-
+func (breaker *CircuitBreaker) Handle(context context.Context, doHandle doFunc, failback failFunc) error {
+	//执行前检查
 	_, err := breaker.beforeHandle()
 
 	if err != nil {
-		return failback(context)
+		return failback(context, err)
 	}
 
-	//成功， 继续执行
+	//继续执行
 	isSuccess := true
-	err = doFunc(context)
+	err = doHandle(context)
 
 	//执行失败
 	if err != nil {
@@ -85,7 +87,7 @@ func (breaker *CircuitBreaker) Handle(context context.Context, doFunc, failback 
 	breaker.afterHandle(isSuccess)
 
 	if !isSuccess {
-		return failback(context)
+		return failback(context, err)
 	}
 
 	return nil
@@ -131,7 +133,7 @@ func (breaker *CircuitBreaker) beforeHandle() (Status int, err error) {
 	Status = breaker.Status
 
 	if breaker.Status == Closed { //关闭状态
-		//需清零错误
+		//需清零计数器
 		if time.Now().After(breaker.viewTime.Add(breaker.ClearInterval)) {
 			breaker.ReStartCount()
 		}
@@ -146,6 +148,8 @@ func (breaker *CircuitBreaker) beforeHandle() (Status int, err error) {
 		//需重置为 半打开状态
 		if time.Now().After(breaker.viewTime.Add(breaker.BeHalOpenInterval)) {
 			breaker.Status = HalfOpen
+
+			breaker.ReStartCount()
 		}
 	}
 
@@ -153,14 +157,13 @@ func (breaker *CircuitBreaker) beforeHandle() (Status int, err error) {
 		//最大成功数已到，重置为 关闭状态
 		if breaker.Count.ContinuesSuccess >= breaker.MaxRequest {
 			breaker.Status = Closed
+			return breaker.Status, errors.New("Breaker Open")
 		}
 
-		//超过允许的请求数
+		//超过允许请求数
 		if breaker.Count.Totals >= breaker.MaxRequest {
 			return breaker.Status, errors.New("Too Many Handle")
 		}
-	} else if breaker.Status == Open {
-		return breaker.Status, errors.New("Breaker Open")
 	}
 
 	//设置 访问时间
