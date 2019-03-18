@@ -13,17 +13,22 @@ type failFunc func(context.Context) error
 
 //状态
 const (
-	Closed    = iota //关闭状态， 健康允许访问
-	Half_Open        //半开状态， 允许一部分 访问
-	Open             //开启状态， 将阻挡访问
+	Closed   = iota //关闭状态， 健康允许访问
+	HalfOpen        //半开状态， 允许一部分 访问
+	Open            //开启状态， 将阻挡访问
+)
+
+var (
+	defaultMaxRequest = 15
 )
 
 //CircuitBreaker 断路器对象
 type CircuitBreaker struct {
+	Name              string
 	mu                sync.Mutex
 	TriggerOpen       func(Counts) bool //根据func 的返回条件 触发 Open状态
 	MaxRequest        int               //当是 半开状态时， 允许继续请求的数目
-	BeHalOpenInterval time.Duration     //当进入Open 状态时， 定时变为 Half_Open的时间
+	BeHalOpenInterval time.Duration     //当进入Open 状态时， 定时变为 HalfOpen的时间
 	ClearInterval     time.Duration     //当是Close状态时， 定时清除的时间
 	Count             Counts            //计时器
 	Status            int               //当前状态
@@ -40,6 +45,24 @@ type Counts struct {
 	Totals           int //总请求数
 }
 
+func (breaker *CircuitBreaker) SetConfig(triggerOpen func(Counts) bool, maxRequest int, beHalOpenInterval time.Duration, clearInterval time.Duration) {
+	if triggerOpen == nil {
+		breaker.TriggerOpen = defaultTriggerOpen
+	} else {
+		breaker.TriggerOpen = triggerOpen
+	}
+
+	if maxRequest <= 0 {
+		breaker.MaxRequest = defaultMaxRequest
+	} else {
+		breaker.MaxRequest = maxRequest
+	}
+
+	breaker.BeHalOpenInterval = beHalOpenInterval
+
+	breaker.ClearInterval = clearInterval
+}
+
 //Handle 执行请求， 记录相关行为
 func (breaker *CircuitBreaker) Handle(context context.Context, doFunc, failback failFunc) error {
 
@@ -53,11 +76,13 @@ func (breaker *CircuitBreaker) Handle(context context.Context, doFunc, failback 
 	isSuccess := true
 	err = doFunc(context)
 
+	//执行失败
 	if err != nil {
 		isSuccess = false
 	}
 
-	AfterHandle(isSuccess)
+	//处理执行后
+	breaker.afterHandle(isSuccess)
 
 	if !isSuccess {
 		return failback(context)
@@ -73,11 +98,6 @@ func (breaker *CircuitBreaker) ReStartCount() {
 	breaker.Count.ContinuesSuccess = 0
 	breaker.Count.ContinuesFail = 0
 	breaker.Count.Totals = 0
-}
-
-//AddCounts 增加请求次数
-func (breaker *CircuitBreaker) AddCounts() {
-	breaker.Count.Totals++
 }
 
 //AddSuccess 请求通过
@@ -109,22 +129,27 @@ func (breaker *CircuitBreaker) beforeHandle() (Status int, err error) {
 	defer breaker.mu.Unlock()
 
 	Status = breaker.Status
-	breaker.AddCounts()
 
 	if breaker.Status == Closed { //关闭状态
 		//需清零错误
 		if time.Now().After(breaker.viewTime.Add(breaker.ClearInterval)) {
 			breaker.ReStartCount()
 		}
-	} else if breaker.Status == Open { //打开状态
-		//需重置为 半打开状态
-		if time.Now().After(breaker.viewTime.Add(breaker.BeHalOpenInterval)) {
-			breaker.Status = Half_Open
+
+		//触发 Open
+		if breaker.TriggerOpen(breaker.Count) {
+			breaker.Status = Open
 		}
 	}
 
-	//再次判断
-	if breaker.Status == Half_Open { //半打开状态
+	if breaker.Status == Open { //打开状态
+		//需重置为 半打开状态
+		if time.Now().After(breaker.viewTime.Add(breaker.BeHalOpenInterval)) {
+			breaker.Status = HalfOpen
+		}
+	}
+
+	if breaker.Status == HalfOpen { //半打开状态
 		//最大成功数已到，重置为 关闭状态
 		if breaker.Count.ContinuesSuccess >= breaker.MaxRequest {
 			breaker.Status = Closed
@@ -138,10 +163,30 @@ func (breaker *CircuitBreaker) beforeHandle() (Status int, err error) {
 		return breaker.Status, errors.New("Breaker Open")
 	}
 
+	//设置 访问时间
+	breaker.viewTime = time.Now()
+
 	return breaker.Status, nil
 }
 
 //执行请求后
-func (breaker *CircuitBreaker) beforeHandle(isSuccess bool) (Status int) {
+func (breaker *CircuitBreaker) afterHandle(isSuccess bool) {
+	//开始增加次数
+	breaker.mu.Lock()
+	defer breaker.mu.Unlock()
 
+	if isSuccess {
+		breaker.AddSuccess()
+	} else {
+		breaker.AddFail()
+	}
+}
+
+//默认 30 次错误 触发 断路器开启
+func defaultTriggerOpen(count Counts) bool {
+	if count.ContinuesFail > 30 {
+		return true
+	}
+
+	return false
 }
