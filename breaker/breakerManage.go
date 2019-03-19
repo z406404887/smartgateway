@@ -15,10 +15,10 @@ var (
 func NewBreaker(name string, triggerOpen func(Counts) bool, maxRequest int, beHalOpenInterval time.Duration, clearInterval time.Duration) *CircuitBreaker {
 
 	//允许大量读
-	mu.RLocker()
-	if breaker, ok := BreakerList[name]; ok {
+	mu.RLock()
+	if _, ok := BreakerList[name]; ok {
 		mu.RUnlock()
-		return breaker
+		return BreakerList[name]
 	}
 	mu.RUnlock()
 

@@ -23,6 +23,9 @@ type UnknowServerHandler struct {
 
 //Handler 该handler以gRPC server的模式来接受数据流，并将受到的数据转发到指定的connection中
 func (s *UnknowServerHandler) Handler(srv interface{}, serverStream grpc.ServerStream) error {
+
+	return grpc.Errorf(codes.Internal, "gRPC error(test):")
+
 	// 获取请求流的目的接口名称
 	fullMethodName, ok := grpc.MethodFromServerStream(serverStream)
 	if !ok {

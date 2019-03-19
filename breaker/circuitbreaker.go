@@ -3,6 +3,7 @@ package breaker
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 )
@@ -68,12 +69,16 @@ func (breaker *CircuitBreaker) setConfig(triggerOpen func(Counts) bool, maxReque
 
 //Handle 执行请求， 记录相关行为
 func (breaker *CircuitBreaker) Handle(context context.Context, doHandle doFunc, failback failFunc) error {
+	fmt.Printf("状态：%d(0=关闭， 1=半开  2=开启), 连续错误次数: %d, 请求次数: %d, 半开时允许请求次数:%d \r\n", breaker.Status, breaker.Count.ContinuesFail, breaker.Count.Totals, breaker.MaxRequest)
+
 	//执行前检查
 	_, err := breaker.beforeHandle()
 
 	if err != nil {
 		return failback(context, err)
 	}
+
+	fmt.Println("继续执行")
 
 	//继续执行
 	isSuccess := true
@@ -105,9 +110,6 @@ func (breaker *CircuitBreaker) ReStartCount() {
 
 //AddSuccess 请求通过
 func (breaker *CircuitBreaker) AddSuccess() {
-	breaker.mu.Lock()
-	defer breaker.mu.Unlock()
-
 	breaker.Count.ContinuesSuccess++
 	breaker.Count.ContinuesFail = 0
 	breaker.Count.SuccessCounts++
@@ -116,8 +118,6 @@ func (breaker *CircuitBreaker) AddSuccess() {
 
 //AddSuccess 请求失败
 func (breaker *CircuitBreaker) AddFail() {
-	breaker.mu.Lock()
-	defer breaker.mu.Unlock()
 
 	breaker.Count.ContinuesFail++
 	breaker.Count.ContinuesSuccess = 0
@@ -152,6 +152,8 @@ func (breaker *CircuitBreaker) beforeHandle() (Status int, err error) {
 
 			//重置状态后清零
 			breaker.ReStartCount()
+		} else {
+			return breaker.Status, errors.New("Open Breaker")
 		}
 	}
 

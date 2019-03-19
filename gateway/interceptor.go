@@ -120,7 +120,7 @@ func rateVerify(FullMethod string) error {
 
 //触发熔断器
 func triggerCircuitBreaker(c breaker.Counts) bool {
-	if c.ContinuesFail > 60 {
+	if c.ContinuesFail > 5 {
 		return true
 	}
 
