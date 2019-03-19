@@ -8,7 +8,7 @@ import (
 var (
 	mu          = &sync.RWMutex{}
 	BreakerList = make(map[string]*CircuitBreaker) //熔断器列表
-	
+
 )
 
 // NewBreaker  获取Breaker
@@ -33,7 +33,7 @@ func NewBreaker(name string, triggerOpen func(Counts) bool, maxRequest int, beHa
 
 	//初始化
 	breaker := &CircuitBreaker{}
-	breaker.SetConfig(triggerOpen, maxRequest, beHalOpenInterval, clearInterval)
+	breaker.setConfig(triggerOpen, maxRequest, beHalOpenInterval, clearInterval)
 
 	//添加到map中
 	BreakerList[name] = breaker

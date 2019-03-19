@@ -19,20 +19,21 @@ const (
 )
 
 var (
-	defaultMaxRequest = 15
+	defaultMaxRequest    = 15
+	defaultContinuesFail = 30
 )
 
 //CircuitBreaker 断路器对象
 type CircuitBreaker struct {
 	Name              string
 	mu                sync.Mutex
+	Count             Counts            //计数器
 	TriggerOpen       func(Counts) bool //根据func 的返回条件 触发 Open状态
-	MaxRequest        int               //当是 半开状态时， 允许继续请求的数目
 	BeHalOpenInterval time.Duration     //当进入Open 状态时， 定时变为 HalfOpen的时间
 	ClearInterval     time.Duration     //当是Close状态时， 定时清除的时间
-	Count             Counts            //计时器
-	Status            int               //当前状态
+	MaxRequest        int               //当是 半开状态时， 允许继续请求的数目
 
+	Status   int       //当前状态
 	viewTime time.Time // 最后访问时间
 }
 
@@ -45,7 +46,7 @@ type Counts struct {
 	Totals           int //总请求数
 }
 
-func (breaker *CircuitBreaker) SetConfig(triggerOpen func(Counts) bool, maxRequest int, beHalOpenInterval time.Duration, clearInterval time.Duration) {
+func (breaker *CircuitBreaker) setConfig(triggerOpen func(Counts) bool, maxRequest int, beHalOpenInterval time.Duration, clearInterval time.Duration) {
 	if triggerOpen == nil {
 		breaker.TriggerOpen = defaultTriggerOpen
 	} else {
@@ -126,7 +127,7 @@ func (breaker *CircuitBreaker) AddFail() {
 
 //执行请求前
 func (breaker *CircuitBreaker) beforeHandle() (Status int, err error) {
-	//开始增加次数
+
 	breaker.mu.Lock()
 	defer breaker.mu.Unlock()
 
@@ -138,30 +139,28 @@ func (breaker *CircuitBreaker) beforeHandle() (Status int, err error) {
 			breaker.ReStartCount()
 		}
 
-		//触发 Open
+		//条件达到, 触发断路器状态为 Open
 		if breaker.TriggerOpen(breaker.Count) {
 			breaker.Status = Open
 		}
 	}
 
 	if breaker.Status == Open { //打开状态
-		//需重置为 半打开状态
+		//到了 重置 半打开状态的时间点
 		if time.Now().After(breaker.viewTime.Add(breaker.BeHalOpenInterval)) {
 			breaker.Status = HalfOpen
 
+			//重置状态后清零
 			breaker.ReStartCount()
 		}
 	}
 
 	if breaker.Status == HalfOpen { //半打开状态
-		//最大成功数已到，重置为 关闭状态
+		//半打开状态下 成功的请求已到最大请求数，  关闭断路器
 		if breaker.Count.ContinuesSuccess >= breaker.MaxRequest {
 			breaker.Status = Closed
-			return breaker.Status, errors.New("Breaker Open")
-		}
-
-		//超过允许请求数
-		if breaker.Count.Totals >= breaker.MaxRequest {
+		} else if breaker.Count.Totals >= breaker.MaxRequest {
+			//超过允许请求数
 			return breaker.Status, errors.New("Too Many Handle")
 		}
 	}
@@ -185,9 +184,9 @@ func (breaker *CircuitBreaker) afterHandle(isSuccess bool) {
 	}
 }
 
-//默认 30 次错误 触发 断路器开启
+//默认打开断路器条件: 30 次错误
 func defaultTriggerOpen(count Counts) bool {
-	if count.ContinuesFail > 30 {
+	if count.ContinuesFail > defaultContinuesFail {
 		return true
 	}
 
