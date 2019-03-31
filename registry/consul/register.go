@@ -14,7 +14,7 @@ type Register struct {
 
 //registerManage 管理注册中心
 type registerManage struct {
-	mu        sync.Mutex
+	mu        sync.RWMutex
 	Registers map[string]*Register
 }
 
@@ -33,17 +33,29 @@ func init() {
 
 //NewConsulRegister 初始化 consul注册中心
 func NewConsulRegister(Address string) (r *Register, e error) {
-	rManage.mu.Lock()
-	defer rManage.mu.Unlock()
+	//允许大量读
+	rManage.mu.RLock()
 
+	//返回注册对象
 	register, ok := rManage.Registers[Address]
-
-	//已有该consul的 对象了
 	if ok {
+		rManage.mu.RUnlock()
 		return register, nil
 	}
 
-	//还没有该对象, 创建
+	rManage.mu.RUnlock()
+
+	rManage.mu.Lock()
+	defer rManage.mu.Unlock()
+
+	//多个读锁等待写， 只有一个会启用， 其他需再次检查
+	register, ok = rManage.Registers[Address]
+	if ok {
+		rManage.mu.RUnlock()
+		return register, nil
+	}
+
+	//创建
 	config := consulapi.DefaultConfig()
 	config.Address = Address
 	client, err := consulapi.NewClient(config)
@@ -67,9 +79,9 @@ func (r *Register) Deregister(ID string) error {
 	return r.client.Agent().ServiceDeregister(ID)
 }
 
-//GetServices 获取consul 服务
+//GetServices 获取consul 某个服务
 func (r *Register) GetService(ID string) (*consulapi.AgentService, error) {
-	services, err := r.client.Agent().Services()
+	services, err := r.GetAllService()
 	if err != nil {
 		return nil, err
 	}
@@ -81,6 +93,11 @@ func (r *Register) GetService(ID string) (*consulapi.AgentService, error) {
 	}
 
 	return service, nil
+}
+
+//GetAllService 获取consul全部服务
+func (r *Register) GetAllService() (map[string]*consulapi.AgentService, error) {
+	return r.client.Agent().Services()
 }
 
 //RegisterService 注册服务

@@ -71,7 +71,6 @@ func (s *UnknowServerHandler) Handler(srv interface{}, serverStream grpc.ServerS
 		select {
 		case s2cErr := <-s2cErrChan:
 			if s2cErr == io.EOF {
-
 				// 正常结束
 				clientStream.CloseSend()
 				break

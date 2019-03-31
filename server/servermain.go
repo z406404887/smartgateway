@@ -26,7 +26,7 @@ func main() {
 	//初始化grpc
 	s := grpc.NewServer()
 
-	//health 健康检查
+	//health 对外健康检查服务
 	hsrv := health.NewServer()
 	hsrv.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
 	healthpb.RegisterHealthServer(s, hsrv)
